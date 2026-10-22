@@ -198,8 +198,11 @@ function closeOverlayPhoto() {
     }
 }
 
-// ================= 4. 手势引擎 =================
+// ================= 4. 手势引擎与摄像头 =================
 const videoElement = document.createElement('video');
+videoElement.setAttribute('playsinline', ''); // 兼容手机端
+videoElement.muted = true; // 必须静音，否则浏览器会拦截
+
 const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
 hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
 
@@ -236,11 +239,10 @@ hands.onResults((results) => {
 
     // ================= 状态：OK手势大图浏览模式 =================
     if (appState === 'viewing-photo') {
-        // 👇 核心修改：握拳仅退出大图，不再触发关灯
+        // 握拳仅退出大图，不关灯
         if (isFist(lm) && !isFistLocked) { 
             isFistLocked = true; 
             closeOverlayPhoto(); 
-            // triggerLight(true);  <-- 这一行被删除了，所以不会关灯
         } else if (!isFist(lm)) { 
             isFistLocked = false; 
         }
@@ -249,7 +251,7 @@ hands.onResults((results) => {
 
     // ================= 正常模式 =================
 
-    // 1. 握拳 (正常模式下的关灯)
+    // 1. 握拳 (关灯)
     if (isFist(lm)) {
         if (fistStartTime === 0) fistStartTime = now;
         if (now - fistStartTime > 1000 && !isFistLocked) {
@@ -296,6 +298,7 @@ function resetContinuousStates() {
     if (isWindLocked) isWindLocked = false;
 }
 
+// --- 手势判定算法 ---
 function isHandOpen(lm) { return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y; }
 function isFist(lm) { return lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y; }
 function isScissors(lm) { return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y; }
@@ -304,8 +307,20 @@ function isOkSign(lm) {
     return (distThumbIndex < 0.06) && (lm[12].y < lm[10].y || lm[16].y < lm[14].y || lm[20].y < lm[18].y);
 }
 
+// ================= 5. 启动摄像头并挂载画面 =================
 const camera = new Camera(videoElement, { 
     onFrame: async () => { await hands.send({ image: videoElement }); }, 
     width: 640, height: 480 
 });
-camera.start().catch(err => console.warn("摄像头启动失败，请确保在 localhost 或 https 环境下运行。"));
+
+camera.start().then(() => {
+    // 摄像头启动成功后，将 video 挂载到右下角容器
+    const cameraPreview = document.getElementById('cameraPreview');
+    if (cameraPreview) {
+        cameraPreview.appendChild(videoElement);
+        // 强制播放，防止黑屏
+        videoElement.play().catch(e => console.log("视频自动播放失败:", e));
+    }
+}).catch(err => {
+    console.warn("摄像头启动失败，请确保在 localhost 或 https 环境下运行。", err);
+});

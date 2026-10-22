@@ -152,3 +152,31 @@ body.lights-off .photo { opacity: 0.15; filter: grayscale(100%); }
     animation: pulseHint 2.5s infinite; font-weight: 300; 
 }
 @keyframes pulseHint { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-5px); } }
+/* ================= 右下角摄像头预览 ================= */
+.camera-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 240px; /* 你可以根据需要调整大小 */
+    height: 180px;
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 100; /* 保证在最上层 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 107, 129, 0.3); /* 梦幻光晕 */
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: #000;
+    opacity: 0.85;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.camera-preview:hover {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.camera-preview video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* 镜像翻转，像照镜子一样，体验更自然 */
+}
