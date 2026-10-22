@@ -52,7 +52,7 @@ body {
 
 .carousel-main-img {
     position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 5; pointer-events: none;
-    background: url('./bayinhe.png') no-repeat center center / contain;
+    background: url('./bayinhe.webp') no-repeat center center / contain;
     filter: drop-shadow(0 15px 30px rgba(0,0,0,0.6)) drop-shadow(0 0 15px rgba(255, 215, 0, 0.2));
 }
 

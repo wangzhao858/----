@@ -1,11 +1,10 @@
 // ================= 0. 你的专属照片库 (请确保有 photos 文件夹) =================
 const photoLibrary = [
-    './photos/1.jpg', './photos/2.jpg',
-    './photos/3.jpg', './photos/4.jpg',
-    './photos/5.jpg', './photos/6.jpg',
-    './photos/7.jpg', './photos/8.jpg'
+    './photos/1.webp', './photos/2.webp',
+    './photos/3.webp', './photos/4.webp',
+    './photos/5.webp', './photos/6.webp',
+    './photos/7.webp', './photos/8.webp'
 ];
-
 // ================= 1. 音乐与唤醒逻辑 =================
 const bgm = document.getElementById('bgm');
 let isStarted = false;
