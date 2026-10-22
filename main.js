@@ -46,6 +46,7 @@ class Particle {
         this.y = randomY ? Math.random() * height : height + 10;
         this.size = Math.random() * 2.5 + 0.5;
         this.speedY = Math.random() * -0.8 - 0.3; 
+        this.isWindParticle = false; // 标记是否为风吹下来的粒子
         this.speedX = (Math.random() - 0.5) * 0.5;
         this.opacity = Math.random() * 0.6 + 0.2;
         const colors = ['255, 215, 0', '255, 107, 129', '255, 255, 255'];
@@ -57,7 +58,16 @@ class Particle {
         this.y += this.speedY;
         this.x += this.speedX + Math.sin(this.y * 0.01) * 0.2;
         this.pulsePhase += this.pulseSpeed;
-        if (this.y < -10 || this.x < -10 || this.x > width + 10) this.init(false);
+        
+        // 风吹粒子的生命周期结束（落出屏幕）
+        if (this.isWindParticle && this.y > height + 10) {
+            this.opacity = 0; 
+            this.speedY = 0;  
+        } 
+        // 普通萤火虫粒子的生命周期循环（从底部重新生成）
+        else if (!this.isWindParticle && (this.y < -10 || this.x < -10 || this.x > width + 10)) {
+            this.init(false);
+        }
     }
     draw() {
         const currentOpacity = this.opacity + Math.sin(this.pulsePhase) * 0.2;
@@ -68,8 +78,11 @@ class Particle {
     }
 }
 for (let i = 0; i < 100; i++) particles.push(new Particle());
+
 function animateParticles() {
     ctx.clearRect(0, 0, width, height);
+    // 过滤掉已经完全透明失效的粒子，防止数组无限变大卡顿
+    particles = particles.filter(p => p.opacity > 0);
     particles.forEach(p => { p.update(); p.draw(); });
     requestAnimationFrame(animateParticles);
 }
@@ -138,6 +151,7 @@ function triggerTakePhoto() {
     }
 }
 
+// 起风特效（包含大量白色星星散落）
 function triggerWind() {
     if (windTimeout) clearTimeout(windTimeout);
     setBtnState('btnWind', true);
@@ -145,16 +159,32 @@ function triggerWind() {
     
     let originalVol = bgm.volume;
     bgm.volume = 0.3; 
-    particles.forEach(p => p.speedY *= 2);
     
+    // 生成从上方散落的狂风粒子 (数量从 80 增加到 200)
+    for (let i = 0; i < 200; i++) {
+        setTimeout(() => {
+            const p = new Particle();
+            p.y = -20 - Math.random() * 200; // 让星星在屏幕上方不同高度出现，分批落下
+            p.x = Math.random() * width; 
+            p.speedY = Math.random() * 12 + 6; // 下落速度更快
+            p.speedX = (Math.random() - 0.5) * 6; // 横向风感更强
+            p.size = Math.random() * 4 + 1.5; // 星星更大一点
+            p.isWindParticle = true; // 标记为风粒子
+            p.opacity = 1; // 初始可见
+            
+            // 强制将颜色改为纯白色或带一点点微黄
+            p.color = Math.random() > 0.3 ? '255, 255, 255' : '255, 230, 150'; 
+            
+            particles.push(p);
+        }, Math.random() * 2000); // 在 2 秒内持续不断地散落
+    }
+
     windTimeout = setTimeout(() => {
         photoRing.classList.remove('windy');
         setBtnState('btnWind', false);
         bgm.volume = originalVol;
-        particles.forEach(p => { if(p.speedY < -1.6) p.speedY /= 2; });
     }, 3000);
 }
-
 function triggerLight(state) {
     isLightOff = state;
     setBtnState('btnLight', state);
@@ -200,8 +230,8 @@ function closeOverlayPhoto() {
 
 // ================= 4. 手势引擎与摄像头 =================
 const videoElement = document.createElement('video');
-videoElement.setAttribute('playsinline', ''); // 兼容手机端
-videoElement.muted = true; // 必须静音，否则浏览器会拦截
+videoElement.setAttribute('playsinline', ''); 
+videoElement.muted = true; 
 
 const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
 hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
@@ -214,23 +244,37 @@ hands.onResults((results) => {
         startExperience();
     }
 
-        let twoHandsFist = false;
+    // --- 双手手势检测 ---
+    let twoHandsOpen = false;
+    let twoHandsFist = false;
+    
     if (handCount === 2) {
         const lm1 = results.multiHandLandmarks[0];
         const lm2 = results.multiHandLandmarks[1];
+        if (isHandOpen(lm1) && isHandOpen(lm2)) twoHandsOpen = true;
         if (isFist(lm1) && isFist(lm2)) twoHandsFist = true;
     }
 
-    if (twoHandsFist) {
+    // 逻辑：双手张开 -> 起风 (冷却2秒)
+    if (twoHandsOpen) {
         if (twoHandsStartTime === 0) twoHandsStartTime = now;
         if (now - twoHandsStartTime > 300 && !isWindLocked && (now - lastWindTime > 2000)) {
-            isWindLocked = true; lastWindTime = now; 
-            triggerLight(true); // 触发关灯
-            photoRing.style.animationPlayState = 'paused'; // 停止旋转
+            isWindLocked = true; 
+            lastWindTime = now; 
+            triggerWind();
         }
     } else { 
         twoHandsStartTime = 0; 
         if (isWindLocked) isWindLocked = false; 
+    }
+
+    // 逻辑：双手握拳 -> 关灯 (冷却2秒)
+    if (twoHandsFist) {
+        if (now - lastWindTime > 2000) { // 借用同一个计时器防抖
+            triggerLight(true);
+            photoRing.style.animationPlayState = 'paused';
+            lastWindTime = now; 
+        }
     }
 
     if (handCount === 0) { 
@@ -241,7 +285,6 @@ hands.onResults((results) => {
 
     // ================= 状态：OK手势大图浏览模式 =================
     if (appState === 'viewing-photo') {
-        // 握拳仅退出大图，不关灯
         if (isFist(lm) && !isFistLocked) { 
             isFistLocked = true; 
             closeOverlayPhoto(); 
@@ -253,9 +296,7 @@ hands.onResults((results) => {
 
     // ================= 正常模式 =================
 
-    
-
-    // 2. 张开手掌 (开灯)
+    // 1. 单手张开手掌 (开灯)
     if (isHandOpen(lm)) {
         setBtnState('btnPause', false);
         if (isLightOff) { 
@@ -265,14 +306,14 @@ hands.onResults((results) => {
         return;
     }
 
-    // 3. OK手势 (打开大图并开始自动轮播)
+    // 2. OK手势 (打开大图并开始自动轮播)
     if (isOkSign(lm) && (now - lastOkTime > 2000)) { 
         lastOkTime = now; 
         triggerOpenPhoto(); 
         return; 
     }
 
-    // 4. 剪刀手 (放大展示)
+    // 3. 剪刀手 (放大展示)
     if (isScissors(lm) && (now - lastScissorsTime > 2000)) { 
         lastScissorsTime = now; 
         triggerTakePhoto(); 
@@ -303,11 +344,9 @@ const camera = new Camera(videoElement, {
 });
 
 camera.start().then(() => {
-    // 摄像头启动成功后，将 video 挂载到右下角容器
     const cameraPreview = document.getElementById('cameraPreview');
     if (cameraPreview) {
         cameraPreview.appendChild(videoElement);
-        // 强制播放，防止黑屏
         videoElement.play().catch(e => console.log("视频自动播放失败:", e));
     }
 }).catch(err => {
