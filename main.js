@@ -1,20 +1,15 @@
 // ================= 0. 你的专属照片库 (请确保有 photos 文件夹) =================
 const photoLibrary = [
-    './photos/1.jpg',
-    './photos/2.jpg',
-    './photos/3.jpg',
-    './photos/4.jpg',
-    './photos/5.jpg',
-    './photos/6.jpg',
-    './photos/7.jpg',
-    './photos/8.jpg'
+    './photos/1.jpg', './photos/2.jpg',
+    './photos/3.jpg', './photos/4.jpg',
+    './photos/5.jpg', './photos/6.jpg',
+    './photos/7.jpg', './photos/8.jpg'
 ];
 
 // ================= 1. 音乐与唤醒逻辑 =================
 const bgm = document.getElementById('bgm');
 let isStarted = false;
 
-// 暴露给全局，供 HTML 中的按钮点击调用
 window.startExperience = function() {
     if (isStarted) return;
     isStarted = true;
@@ -88,15 +83,17 @@ const bigPhotoImg = document.getElementById('bigPhotoImg');
 let appState = 'normal'; 
 let isLightOff = false;
 let windTimeout = null;
-let lastScissorsTime = 0, lastWindTime = 0, lastOkTime = 0, lastSwitchTime = 0;
+
+let lastScissorsTime = 0, lastWindTime = 0, lastOkTime = 0;
 let fistStartTime = 0, isFistLocked = false;
 let twoHandsStartTime = 0, isWindLocked = false;
 let currentPhotoIndex = 0;
 let isPhotoZooming = false; 
+let autoPlayInterval = null; 
 
 function initPhotos() {
     const numPhotos = photoLibrary.length;
-    const radius = 240; // 横版图半径
+    const radius = 240; 
     photoLibrary.forEach((src, i) => {
         const angle = (360 / numPhotos) * i;
         const wrapper = document.createElement('div');
@@ -110,7 +107,6 @@ initPhotos();
 
 function setBtnState(btnId, state) { document.getElementById(btnId).classList.toggle('active', state); }
 
-// 剪刀手放大特效
 function triggerTakePhoto() {
     if (isPhotoZooming) return; 
     isPhotoZooming = true;
@@ -173,16 +169,19 @@ function triggerOpenPhoto() {
     photoOverlay.classList.add('show');
     setBtnState('btnOk', true);
     photoRing.style.animationPlayState = 'paused';
-}
 
-function switchPhoto(direction) {
-    if (appState !== 'viewing-photo') return;
-    const now = Date.now();
-    if (now - lastSwitchTime < 800) return; 
-    lastSwitchTime = now;
-    currentPhotoIndex = direction === 'right' ? (currentPhotoIndex + 1) % photoLibrary.length : (currentPhotoIndex - 1 + photoLibrary.length) % photoLibrary.length;
-    bigPhotoImg.style.opacity = '0';
-    setTimeout(() => { bigPhotoImg.src = photoLibrary[currentPhotoIndex]; bigPhotoImg.style.opacity = '1'; }, 200);
+    if (autoPlayInterval) clearInterval(autoPlayInterval);
+    autoPlayInterval = setInterval(() => {
+        if (appState !== 'viewing-photo') return; 
+        
+        currentPhotoIndex = (currentPhotoIndex + 1) % photoLibrary.length;
+        
+        bigPhotoImg.style.opacity = '0';
+        setTimeout(() => { 
+            bigPhotoImg.src = photoLibrary[currentPhotoIndex]; 
+            bigPhotoImg.style.opacity = '1'; 
+        }, 200); 
+    }, 2500);
 }
 
 function closeOverlayPhoto() {
@@ -191,6 +190,11 @@ function closeOverlayPhoto() {
         photoOverlay.classList.remove('show');
         setBtnState('btnOk', false);
         photoRing.style.animationPlayState = 'running';
+        
+        if (autoPlayInterval) {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+        }
     }
 }
 
@@ -219,58 +223,79 @@ hands.onResults((results) => {
         if (now - twoHandsStartTime > 300 && !isWindLocked && (now - lastWindTime > 2000)) {
             isWindLocked = true; lastWindTime = now; triggerWind();
         }
-    } else { twoHandsStartTime = 0; if (isWindLocked) isWindLocked = false; }
+    } else { 
+        twoHandsStartTime = 0; 
+        if (isWindLocked) isWindLocked = false; 
+    }
 
-    if (handCount === 0) { resetContinuousStates(); return; }
+    if (handCount === 0) { 
+        resetContinuousStates(); 
+        return; 
+    }
     const lm = results.multiHandLandmarks[0];
 
-    // --- 状态：查看大图模式 ---
+    // ================= 状态：OK手势大图浏览模式 =================
     if (appState === 'viewing-photo') {
-        if (isHandOpen(lm)) {
-            const palmX = (lm[0].x + lm[9].x) / 2;
-            if (window.prevPalmX) {
-                const dx = palmX - window.prevPalmX;
-                if (dx > 0.06) switchPhoto('right'); 
-                if (dx < -0.06) switchPhoto('left'); 
-            }
-            window.prevPalmX = palmX;
+        // 👇 核心修改：握拳仅退出大图，不再触发关灯
+        if (isFist(lm) && !isFistLocked) { 
+            isFistLocked = true; 
+            closeOverlayPhoto(); 
+            // triggerLight(true);  <-- 这一行被删除了，所以不会关灯
+        } else if (!isFist(lm)) { 
+            isFistLocked = false; 
         }
-        if (isFist(lm) && !isFistLocked) { isFistLocked = true; closeOverlayPhoto(); triggerLight(true); } 
-        else if (!isFist(lm)) { isFistLocked = false; }
         return; 
     }
 
-    // --- 状态：正常模式 ---
+    // ================= 正常模式 =================
 
-    // 握拳 (关灯)
+    // 1. 握拳 (正常模式下的关灯)
     if (isFist(lm)) {
         if (fistStartTime === 0) fistStartTime = now;
         if (now - fistStartTime > 1000 && !isFistLocked) {
-            isFistLocked = true; setBtnState('btnPause', true); photoRing.style.animationPlayState = 'paused'; triggerLight(true);
+            isFistLocked = true; 
+            setBtnState('btnPause', true); 
+            photoRing.style.animationPlayState = 'paused'; 
+            triggerLight(true);
         }
         return; 
-    } else { fistStartTime = 0; if (isFistLocked) isFistLocked = false; }
+    } else { 
+        fistStartTime = 0; 
+        if (isFistLocked) isFistLocked = false; 
+    }
 
-    // 张开手掌 (开灯)
+    // 2. 张开手掌 (开灯)
     if (isHandOpen(lm)) {
         setBtnState('btnPause', false);
-        if (isLightOff) { triggerLight(false); photoRing.style.animationPlayState = 'running'; }
+        if (isLightOff) { 
+            triggerLight(false); 
+            photoRing.style.animationPlayState = 'running'; 
+        }
         return;
     }
 
-    // OK 手势 (打开全景大图)
-    if (isOkSign(lm) && (now - lastOkTime > 2000)) { lastOkTime = now; triggerOpenPhoto(); return; }
+    // 3. OK手势 (打开大图并开始自动轮播)
+    if (isOkSign(lm) && (now - lastOkTime > 2000)) { 
+        lastOkTime = now; 
+        triggerOpenPhoto(); 
+        return; 
+    }
 
-    // 剪刀手 (放大展示 3 秒)
-    if (isScissors(lm) && (now - lastScissorsTime > 2000)) { lastScissorsTime = now; triggerTakePhoto(); return; }
+    // 4. 剪刀手 (放大展示)
+    if (isScissors(lm) && (now - lastScissorsTime > 2000)) { 
+        lastScissorsTime = now; 
+        triggerTakePhoto(); 
+        return; 
+    }
 });
 
 function resetContinuousStates() {
-    fistStartTime = 0; twoHandsStartTime = 0; window.prevPalmX = null;
-    if (isFistLocked) isFistLocked = false; if (isWindLocked) isWindLocked = false;
+    fistStartTime = 0; 
+    twoHandsStartTime = 0; 
+    if (isFistLocked) isFistLocked = false; 
+    if (isWindLocked) isWindLocked = false;
 }
 
-// --- 手势判定算法 ---
 function isHandOpen(lm) { return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y; }
 function isFist(lm) { return lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y; }
 function isScissors(lm) { return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y; }
@@ -279,7 +304,6 @@ function isOkSign(lm) {
     return (distThumbIndex < 0.06) && (lm[12].y < lm[10].y || lm[16].y < lm[14].y || lm[20].y < lm[18].y);
 }
 
-// 启动摄像头
 const camera = new Camera(videoElement, { 
     onFrame: async () => { await hands.send({ image: videoElement }); }, 
     width: 640, height: 480 
