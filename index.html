@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carousel Lamp - 梦幻八音盒</title>
+    
+    <!-- 引入外部 CSS 文件 -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- 引入 MediaPipe 依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <!-- 入场唤醒界面 -->
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-title">Carousel Lamp</div>
+        <div class="intro-hint">请将手放入镜头中，张开五指<br>即可唤醒八音盒与音乐</div>
+        <button class="intro-btn" onclick="startExperience()">或者点此进入</button>
+    </div>
+
+    <!-- 背景音乐 (请确保同目录下有 bgm.mp3) -->
+    <audio id="bgm" src="./bgm.mp3" loop></audio>
+
+    <!-- Canvas 粒子背景 -->
+    <canvas id="particleCanvas"></canvas>
+    
+    <!-- 标题 -->
+    <div class="title-logo">Carousel<br>Lamp</div>
+
+    <!-- 3D 场景 -->
+    <div class="scene">
+        <div class="carousel">
+            <!-- 八音盒主体图片 (请确保同目录下有 bayinhe.png) -->
+            <div class="carousel-main-img"></div>
+            <!-- 照片环动态生成区 -->
+            <div class="photo-ring" id="photoRing"></div>
+        </div>
+    </div>
+
+    <!-- 底部手势状态提示栏 -->
+    <div class="toolbar">
+        <button class="btn" id="btnAdd">✌️ 挂相片</button>
+        <button class="btn" id="btnWind">👐 双手起风</button>
+        <button class="btn" id="btnPause">✊ 握拳</button>
+        <button class="btn" id="btnLight">🖐 开灯</button>
+        <button class="btn" id="btnOk">👌 OK查看</button>
+    </div>
+
+    <!-- 拍照闪光特效层 -->
+    <div class="flash-overlay" id="flashOverlay"></div>
+
+    <!-- 全景大图查看遮罩 -->
+    <div class="fullscreen-photo-overlay" id="photoOverlay">
+        <div class="big-photo">
+            <img id="bigPhotoImg" src="" alt="memory">
+        </div>
+        <div class="switch-hint">← 向左摆手切换 / 向右摆手切换 →</div>
+    </div>
+
+    <!-- 引入外部 JS 文件 (放在 body 最底部保证 DOM 加载完毕) -->
+    <script src="main.js"></script>
+</body>
+</html>

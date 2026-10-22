@@ -1,0 +1,154 @@
+/* ================= 基础重置与背景 ================= */
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+body {
+    background: radial-gradient(circle at 50% 40%, #2c1d3d 0%, #120a1b 60%, #05020a 100%);
+    height: 100vh; overflow: hidden; font-family: 'Microsoft YaHei', sans-serif;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    perspective: 1200px; transition: background 1s ease;
+}
+
+/* ================= 入场唤醒遮罩 ================= */
+.intro-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: radial-gradient(circle at center, #1e1427 0%, #05020a 100%);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    transition: opacity 1.5s ease, visibility 1.5s;
+}
+.intro-overlay.hidden { opacity: 0; visibility: hidden; }
+.intro-title {
+    font-family: 'Brush Script MT', cursive; font-size: 6rem; color: #fff;
+    text-shadow: 0 0 20px #ff6b81, 0 0 40px #ff6b81;
+    animation: breathe 2s infinite alternate; margin-bottom: 20px;
+}
+.intro-hint {
+    color: #ffd700; font-size: 1.2rem; letter-spacing: 3px;
+    text-shadow: 0 0 10px rgba(255,215,0,0.5); animation: pulse 1.5s infinite;
+    text-align: center; line-height: 2;
+}
+.intro-btn {
+    margin-top: 40px; padding: 10px 30px; background: rgba(255,255,255,0.1); 
+    border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 20px; cursor: pointer;
+    transition: all 0.3s;
+}
+.intro-btn:hover { background: rgba(255,255,255,0.2); }
+
+@keyframes breathe { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.05); opacity: 1; } }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* ================= 动态粒子与主界面 ================= */
+#particleCanvas { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+
+.title-logo {
+    position: absolute; top: 8%; left: 8%; font-family: 'Brush Script MT', cursive; font-size: 6.5rem; color: #fff; z-index: 10;
+    text-shadow: 0 0 10px #ff6b81, 0 0 30px #ff6b81, 0 0 60px #ff6b81;
+    transform: rotate(-8deg); pointer-events: none; line-height: 0.9;
+    animation: titleGlow 4s ease-in-out infinite alternate;
+}
+@keyframes titleGlow { 0% { filter: drop-shadow(0 0 10px rgba(255,107,129,0.5)); } 100% { filter: drop-shadow(0 0 30px rgba(255,107,129,0.9)); } }
+
+/* ================= 3D 场景与木马 ================= */
+.scene { width: 100vw; height: 85vh; display: flex; justify-content: center; align-items: center; position: relative; z-index: 1; }
+.carousel { position: relative; width: 450px; height: 550px; transform-style: preserve-3d; transition: filter 0.8s; }
+
+.carousel-main-img {
+    position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 5; pointer-events: none;
+    background: url('./bayinhe.png') no-repeat center center / contain;
+    filter: drop-shadow(0 15px 30px rgba(0,0,0,0.6)) drop-shadow(0 0 15px rgba(255, 215, 0, 0.2));
+}
+
+.photo-ring { 
+    position: absolute; width: 100%; height: 100%; 
+    transform-style: preserve-3d; 
+    animation: ringRotate 30s linear infinite; 
+    animation-play-state: paused; 
+}
+@keyframes ringRotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+
+/* ================= 悬挂照片布局 (横版) ================= */
+.photo-wrapper {
+    position: absolute; left: 50%; top: 40%; 
+    width: 100px; height: 180px; margin-left: -50px;
+    transform-style: preserve-3d; transform-origin: top center; 
+}
+
+.hanging-wire {
+    position: absolute; top: 0; left: 50%; width: 2px; height: 100px;
+    background: linear-gradient(to bottom, #ffd700, #ffb6c1);
+    transform: translateX(-50%); z-index: 1; box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+}
+.hanging-wire::before {
+    content: ''; position: absolute; top: -3px; left: -3px; width: 8px; height: 8px; border-radius: 50%;
+    background: #ffd700; box-shadow: 0 0 8px #ffd700;
+}
+
+.photo {
+    position: absolute; top: 98px; left: 0; 
+    width: 100px; height: 75px; /* 横版比例 */
+    background: #fff; padding: 5px 5px 15px 5px; 
+    box-shadow: 0 10px 20px rgba(0,0,0,0.8), inset 0 0 3px rgba(0,0,0,0.3);
+    border-radius: 2px; transform-origin: top center; 
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.5s;
+}
+.photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 1px; filter: contrast(1.05) saturate(1.1); }
+.photo::after { 
+    content: ''; position: absolute; inset: 0; border-radius: 2px; 
+    background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%); 
+    pointer-events: none; 
+}
+
+/* ================= 底部 UI 工具栏 ================= */
+.toolbar {
+    position: absolute; bottom: 5%; display: flex; gap: 12px;
+    background: rgba(30, 20, 40, 0.6); padding: 12px 25px; border-radius: 50px;
+    backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 10;
+}
+.btn { 
+    background: transparent; border: none; color: #bbb; font-size: 15px; padding: 10px 20px; 
+    border-radius: 30px; display: flex; align-items: center; gap: 8px; transition: all 0.3s; 
+}
+.btn.active { 
+    background: rgba(255,255,255,0.15); color: #fff; text-shadow: 0 0 10px #fff; 
+    box-shadow: inset 0 0 10px rgba(255,255,255,0.1); transform: scale(1.05); 
+}
+
+/* ================= 状态与特效 ================= */
+body.lights-off { background: #030105; }
+body.lights-off #particleCanvas { opacity: 0.3; }
+body.lights-off .carousel-main-img { filter: drop-shadow(0 0 50px #ffb6c1) brightness(1.4) contrast(1.2); }
+body.lights-off .photo { opacity: 0.15; filter: grayscale(100%); }
+
+@keyframes windSwing { 
+    0% { transform: rotateZ(0deg); } 
+    25% { transform: rotateZ(22deg); } 
+    75% { transform: rotateZ(-22deg); } 
+    100% { transform: rotateZ(0deg); } 
+}
+.photo-ring.windy .photo { animation: windSwing 0.45s ease-in-out infinite; }
+.photo-ring.windy .hanging-wire { transform: translateX(-50%) rotateZ(10deg); transform-origin: top center; }
+
+.flash-overlay { 
+    position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; 
+    z-index: 9999; transition: opacity 0.4s ease-out; 
+}
+.flash-overlay.active { opacity: 1; transition: none; }
+
+/* 全景查看遮罩 */
+.fullscreen-photo-overlay {
+    position: fixed; inset: 0; display: flex; justify-content: center; align-items: center;
+    background: rgba(10, 5, 15, 0.9); backdrop-filter: blur(15px); z-index: 9998; 
+    opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+}
+.fullscreen-photo-overlay.show { opacity: 1; pointer-events: auto; }
+.big-photo { 
+    background: #fff; padding: 20px 20px 70px 20px; border-radius: 4px; 
+    box-shadow: 0 30px 80px rgba(0,0,0,0.9), 0 0 100px rgba(255,107,129,0.2); 
+    transform: scale(0.6) translateY(50px); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+}
+.fullscreen-photo-overlay.show .big-photo { transform: scale(1) translateY(0); }
+.big-photo img { width: 600px; height: 400px; object-fit: contain; background: #111; border-radius: 2px; transition: opacity 0.3s; }
+.switch-hint { 
+    position: absolute; bottom: 8%; color: #aaa; font-size: 1.1rem; letter-spacing: 3px; 
+    animation: pulseHint 2.5s infinite; font-weight: 300; 
+}
+@keyframes pulseHint { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-5px); } }
