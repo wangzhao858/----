@@ -214,17 +214,19 @@ hands.onResults((results) => {
         startExperience();
     }
 
-    let twoHandsOpen = false;
+        let twoHandsFist = false;
     if (handCount === 2) {
         const lm1 = results.multiHandLandmarks[0];
         const lm2 = results.multiHandLandmarks[1];
-        if (isHandOpen(lm1) && isHandOpen(lm2)) twoHandsOpen = true;
+        if (isFist(lm1) && isFist(lm2)) twoHandsFist = true;
     }
 
-    if (twoHandsOpen) {
+    if (twoHandsFist) {
         if (twoHandsStartTime === 0) twoHandsStartTime = now;
         if (now - twoHandsStartTime > 300 && !isWindLocked && (now - lastWindTime > 2000)) {
-            isWindLocked = true; lastWindTime = now; triggerWind();
+            isWindLocked = true; lastWindTime = now; 
+            triggerLight(true); // 触发关灯
+            photoRing.style.animationPlayState = 'paused'; // 停止旋转
         }
     } else { 
         twoHandsStartTime = 0; 
@@ -251,20 +253,7 @@ hands.onResults((results) => {
 
     // ================= 正常模式 =================
 
-    // 1. 握拳 (关灯)
-    if (isFist(lm)) {
-        if (fistStartTime === 0) fistStartTime = now;
-        if (now - fistStartTime > 1000 && !isFistLocked) {
-            isFistLocked = true; 
-            setBtnState('btnPause', true); 
-            photoRing.style.animationPlayState = 'paused'; 
-            triggerLight(true);
-        }
-        return; 
-    } else { 
-        fistStartTime = 0; 
-        if (isFistLocked) isFistLocked = false; 
-    }
+    
 
     // 2. 张开手掌 (开灯)
     if (isHandOpen(lm)) {
